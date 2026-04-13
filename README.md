@@ -3,18 +3,15 @@
 This repository contains Apache HTTP Server configuration examples and a BATS-based testing framework for validating different scenarios.
 
 <!-- TEST-RESULTS-START -->
-<!-- TEST-RESULTS-START -->
 ## Test Results (Auto-generated)
 
 | Fixture | Status | Description |
 |---------|--------|-------------|
-| 01 Cache Control | ⏳ 0/0 | React & Angular cache headers |
-| 02 Security Headers | ⏳ 0/0 | CSP, HSTS, X-Frame-Options |
-| 03 Cache Conflict | ⏳ 0/0 | Documents directive conflicts |
+| 01 Cache Control | ⏳ Pending | React & Angular cache headers |
+| 02 Security Headers | ⏳ Pending | CSP, HSTS, X-Frame-Options |
+| 03 Cache Conflict | ⏳ Pending | Documents directive conflicts |
 
-**Summary:** 0 passed, 0 failed, 0 skipped
-
-*Last updated: 2026-04-13 17:51:39 UTC*
+*Tests will run in GitHub Actions and update this section*
 <!-- TEST-RESULTS-END -->
 
 ## Fixtures
@@ -58,7 +55,7 @@ Comprehensive security header configuration:
 │   ├── 02-security-headers.bats
 │   └── 03-cache-conflict.bats
 ├── .githooks/
-│   └── pre-push                # Updates README before push
+│   └── pre-push                # Validates fixtures before push
 └── .github/workflows/
     └── test.yml                # GitHub Actions CI
 ```
@@ -71,7 +68,7 @@ Comprehensive security header configuration:
 ./scripts/install-hooks.sh
 ```
 
-This installs a pre-push hook that automatically runs tests and updates the README with latest results before each push.
+This installs a pre-push hook that validates fixture structure before each push.
 
 ### Run Tests Locally
 
@@ -91,7 +88,7 @@ bats --tap 01-cache-control.bats
 
 ### Run with GitHub Actions
 
-Tests run automatically on push/PR. See `.github/workflows/test.yml`.
+Tests run automatically on push. See `.github/workflows/test.yml`.
 
 ## License
 
