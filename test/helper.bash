@@ -76,7 +76,7 @@ http_get_body() {
 get_header() {
     local headers="$1"
     local header_name="$2"
-    echo "$headers" | grep -i "^$header_name:" | cut -d':' -f2- | sed 's/^ *//'
+    echo "$headers" | grep -i "^$header_name:" | cut -d':' -f2- | sed 's/^ *//' | tr -d '\n\r'
 }
 
 # Assert header equals expected value
