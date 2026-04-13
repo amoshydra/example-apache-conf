@@ -1,0 +1,45 @@
+name: Apache Config Tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+
+      - name: Build and start Apache container
+        run: |
+          chmod +x build.sh run.sh
+          ./build.sh
+          ./run.sh
+          # Wait for container to be ready
+          sleep 3
+          
+      - name: Verify container is running
+        run: |
+          podman ps
+          podman logs apache-learning || true
+
+      - name: Run tests
+        run: |
+          chmod +x test.sh
+          ./test.sh
+
+      - name: Cleanup
+        if: always()
+        run: |
+          chmod +x stop.sh
+          ./stop.sh || true
