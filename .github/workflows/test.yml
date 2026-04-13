@@ -1,4 +1,4 @@
-name: Apache Config Tests
+name: Apache Fixtures Tests
 
 on:
   push:
@@ -8,38 +8,114 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  test-fixture-01:
     runs-on: ubuntu-latest
+    name: "Fixture 01: Cache Control"
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Podman
+      - name: Install BATS
         run: |
           sudo apt-get update
+          sudo apt-get install -y bats
+          bats --version
+
+      - name: Set up Podman
+        run: |
           sudo apt-get install -y podman
 
-      - name: Build and start Apache container
+      - name: Run Fixture 01 Tests
         run: |
-          chmod +x build.sh run.sh
-          ./build.sh
-          ./run.sh
-          # Wait for container to be ready
-          sleep 3
+          cd test
+          bats --tap 01-cache-control.bats
+        env:
+          BATS_TEST_TIMEOUT: 60
+
+  test-fixture-02:
+    runs-on: ubuntu-latest
+    name: "Fixture 02: Security Headers"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Set up Podman
+        run: |
+          sudo apt-get install -y podman
+
+      - name: Run Fixture 02 Tests
+        run: |
+          cd test
+          bats --tap 02-security-headers.bats
+        env:
+          BATS_TEST_TIMEOUT: 60
+
+  test-fixture-03:
+    runs-on: ubuntu-latest
+    name: "Fixture 03: Cache Conflict Demo"
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Set up Podman
+        run: |
+          sudo apt-get install -y podman
+
+      - name: Run Fixture 03 Tests (Demo - documents expected misbehavior)
+        run: |
+          cd test
+          bats --tap 03-cache-conflict.bats
+        env:
+          BATS_TEST_TIMEOUT: 60
+
+  summary:
+    runs-on: ubuntu-latest
+    name: Test Summary
+    needs: [test-fixture-01, test-fixture-02, test-fixture-03]
+    if: always()
+    
+    steps:
+      - name: Generate Summary
+        run: |
+          echo "## Apache Fixtures Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Fixture | Status | Description |" >> $GITHUB_STEP_SUMMARY
+          echo "|---------|--------|-------------|" >> $GITHUB_STEP_SUMMARY
           
-      - name: Verify container is running
-        run: |
-          podman ps
-          podman logs apache-learning || true
-
-      - name: Run tests
-        run: |
-          chmod +x test.sh
-          ./test.sh
-
-      - name: Cleanup
-        if: always()
-        run: |
-          chmod +x stop.sh
-          ./stop.sh || true
+          if [ "${{ needs.test-fixture-01.result }}" == "success" ]; then
+            echo "| 01 Cache Control | ✅ PASS | React & Angular cache headers |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 01 Cache Control | ❌ FAIL | React & Angular cache headers |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.test-fixture-02.result }}" == "success" ]; then
+            echo "| 02 Security Headers | ✅ PASS | CSP, HSTS, X-Frame-Options |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 02 Security Headers | ❌ FAIL | CSP, HSTS, X-Frame-Options |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.test-fixture-03.result }}" == "success" ]; then
+            echo "| 03 Cache Conflict | ✅ PASS | Documents intentional misconfiguration |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| 03 Cache Conflict | ❌ FAIL | Documents intentional misconfiguration |" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Fixtures Overview" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **01-cache-control**: Proper cache headers for Webpack (React) and Angular CLI builds" >> $GITHUB_STEP_SUMMARY
+          echo "- **02-security-headers**: Comprehensive security headers (CSP, HSTS, etc.)" >> $GITHUB_STEP_SUMMARY
+          echo "- **03-cache-conflict**: Demonstrates how global directives can corrupt location-specific headers" >> $GITHUB_STEP_SUMMARY
