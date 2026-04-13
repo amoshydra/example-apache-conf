@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Apache Learning Server</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; }
+        code { background: #f4f4f4; padding: 2px 6px; }
+        pre { background: #f4f4f4; padding: 15px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Apache HTTP Server</h1>
+    <p>Welcome to your Apache learning environment!</p>
+    <hr>
+    <h2>Quick Reference</h2>
+    <h3>Key Directives</h3>
+    <ul>
+        <li><code>ServerRoot</code> - Base path for config/logs</li>
+        <li><code>Listen</code> - Port to listen on</li>
+        <li><code>DocumentRoot</code> - Document directory</li>
+        <li><code>DirectoryIndex</code> - Default files (index.html)</li>
+        <li><code>ErrorLog</code> - Error log location</li>
+    </ul>
+    <h3>Common Modules</h3>
+    <ul>
+        <li><code>mod_rewrite</code> - URL rewriting</li>
+        <li><code>mod_ssl</code> - SSL/TLS</li>
+        <li><code>mod_proxy</code> - Proxy support</li>
+        <li><code>mod_auth_basic</code> - Basic auth</li>
+    </ul>
+    <h3>Virtual Hosts</h3>
+    <pre>&lt;VirtualHost *:80&gt;
+    ServerName example.com
+    DocumentRoot "/var/www/html"
+&lt;/VirtualHost&gt;</pre>
+    <hr>
+    <small>Edit configs in <code>conf/</code> directory to learn!</small>
+</body>
+</html>
