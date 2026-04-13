@@ -1,5 +1,11 @@
 # Apache Configuration Test Fixtures
 
+<!-- TEST-RESULTS-START -->
+## Test Results (Pending)
+
+*Tests have not run yet*
+<!-- TEST-RESULTS-END -->
+
 
 ## Test Results (Auto-generated)
 
