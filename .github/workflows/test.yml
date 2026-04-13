@@ -3,18 +3,25 @@ name: Apache Fixtures Tests
 on:
   push:
     branches: [main, master]
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
+# Permissions needed to commit README updates
+permissions:
+  contents: write
+
 jobs:
-  test-fixture-01:
+  test-and-update-readme:
     runs-on: ubuntu-latest
-    name: "Fixture 01: Cache Control"
+    name: "Run Tests and Update README"
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Need full history to commit back
+          fetch-depth: 0
+          # Use token that can push
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install BATS
         run: |
@@ -26,96 +33,108 @@ jobs:
         run: |
           sudo apt-get install -y podman
 
-      - name: Run Fixture 01 Tests
+      - name: Run All Tests
+        id: tests
         run: |
           cd test
-          bats --tap 01-cache-control.bats
+          
+          # Run all tests and capture output
+          bats --tap *.bats > ../test-results.tap 2>&1 || true
+          
+          # Display results
+          cat ../test-results.tap
         env:
           BATS_TEST_TIMEOUT: 60
 
-  test-fixture-02:
-    runs-on: ubuntu-latest
-    name: "Fixture 02: Security Headers"
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install BATS
+      - name: Parse Results and Update README
         run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
+          # Parse TAP output
+          TOTAL_PASSED=0
+          TOTAL_FAILED=0
+          TOTAL_SKIPPED=0
+          
+          while IFS= read -r line; do
+            if [[ "$line" =~ ^ok[[:space:]][0-9]+ ]]; then
+              if [[ "$line" =~ \#\ skip ]]; then
+                TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+              else
+                TOTAL_PASSED=$((TOTAL_PASSED + 1))
+              fi
+            elif [[ "$line" =~ ^not[[:space:]]ok[[:space:]][0-9]+ ]]; then
+              TOTAL_FAILED=$((TOTAL_FAILED + 1))
+            fi
+          done < test-results.tap
+          
+          # Generate fixture results
+          F01_PASSED=$(grep -c "^ok.*01-" test-results.tap || true)
+          F01_FAILED=$(grep -c "^not ok.*01-" test-results.tap || true)
+          F01_TOTAL=$((F01_PASSED + F01_FAILED))
+          F01_ICON="✅"
+          [ $F01_FAILED -gt 0 ] && F01_ICON="❌"
+          [ $F01_TOTAL -eq 0 ] && F01_ICON="⏳"
+          
+          F02_PASSED=$(grep -c "^ok.*02-" test-results.tap || true)
+          F02_FAILED=$(grep -c "^not ok.*02-" test-results.tap || true)
+          F02_TOTAL=$((F02_PASSED + F02_FAILED))
+          F02_ICON="✅"
+          [ $F02_FAILED -gt 0 ] && F02_ICON="❌"
+          [ $F02_TOTAL -eq 0 ] && F02_ICON="⏳"
+          
+          F03_PASSED=$(grep -c "^ok.*03-" test-results.tap || true)
+          F03_FAILED=$(grep -c "^not ok.*03-" test-results.tap || true)
+          F03_TOTAL=$((F03_PASSED + F03_FAILED))
+          F03_ICON="✅"
+          [ $F03_FAILED -gt 0 ] && F03_ICON="❌"
+          [ $F03_TOTAL -eq 0 ] && F03_ICON="⏳"
+          
+          TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          
+          # Create new results section
+          echo "<!-- TEST-RESULTS-START -->" > new-results.txt
+          echo "" >> new-results.txt
+          echo "## Test Results (Auto-generated)" >> new-results.txt
+          echo "" >> new-results.txt
+          echo "| Fixture | Status | Description |" >> new-results.txt
+          echo "|---------|--------|-------------|" >> new-results.txt
+          echo "| 01 Cache Control | $F01_ICON $F01_PASSED/$F01_TOTAL | React & Angular cache headers |" >> new-results.txt
+          echo "| 02 Security Headers | $F02_ICON $F02_PASSED/$F02_TOTAL | CSP, HSTS, X-Frame-Options |" >> new-results.txt
+          echo "| 03 Cache Conflict | $F03_ICON $F03_PASSED/$F03_TOTAL | Documents directive conflicts |" >> new-results.txt
+          echo "" >> new-results.txt
+          echo "**Summary:** $TOTAL_PASSED passed, $TOTAL_FAILED failed, $TOTAL_SKIPPED skipped" >> new-results.txt
+          echo "" >> new-results.txt
+          echo "*Last updated: $TIMESTAMP*" >> new-results.txt
+          echo "<!-- TEST-RESULTS-END -->" >> new-results.txt
+          
+          # Update README using sed
+          if grep -q "<!-- TEST-RESULTS-START -->" README.md; then
+            # Replace between markers
+            sed -i '/<!-- TEST-RESULTS-START -->/,/<!-- TEST-RESULTS-END -->/c\<!-- TEST-RESULTS-START -->\n' README.md
+            sed -i '/<!-- TEST-RESULTS-START -->/r new-results.txt' README.md
+            # Remove the marker line that was duplicated
+            sed -i '/^<!-- TEST-RESULTS-START -->$/{N;d}' README.md 2>/dev/null || true
+          else
+            # Insert after first heading
+            sed -i '0,/^# .*/s//\# Apache Configuration Test Fixtures\n\n<!-- TEST-RESULTS-START -->\n## Test Results (Pending)\n\n*Tests have not run yet*\n<!-- TEST-RESULTS-END -->/' README.md
+          fi
+          
+          rm -f new-results.txt test-results.tap
+          echo "Updated README with test results"
 
-      - name: Set up Podman
+      - name: Commit README Update
         run: |
-          sudo apt-get install -y podman
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add README.md
+          if git diff --cached --quiet; then
+            echo "No changes to README"
+          else
+            git commit -m "docs: update test results in README [skip ci]"
+            git push
+          fi
 
-      - name: Run Fixture 02 Tests
-        run: |
-          cd test
-          bats --tap 02-security-headers.bats
-        env:
-          BATS_TEST_TIMEOUT: 60
-
-  test-fixture-03:
-    runs-on: ubuntu-latest
-    name: "Fixture 03: Cache Conflict Demo"
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install BATS
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y bats
-
-      - name: Set up Podman
-        run: |
-          sudo apt-get install -y podman
-
-      - name: Run Fixture 03 Tests (Demo - documents expected misbehavior)
-        run: |
-          cd test
-          bats --tap 03-cache-conflict.bats
-        env:
-          BATS_TEST_TIMEOUT: 60
-
-  summary:
-    runs-on: ubuntu-latest
-    name: Test Summary
-    needs: [test-fixture-01, test-fixture-02, test-fixture-03]
-    if: always()
-    
-    steps:
-      - name: Generate Summary
+      - name: Generate Job Summary
         run: |
           echo "## Apache Fixtures Test Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Fixture | Status | Description |" >> $GITHUB_STEP_SUMMARY
-          echo "|---------|--------|-------------|" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ needs.test-fixture-01.result }}" == "success" ]; then
-            echo "| 01 Cache Control | ✅ PASS | React & Angular cache headers |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 01 Cache Control | ❌ FAIL | React & Angular cache headers |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ needs.test-fixture-02.result }}" == "success" ]; then
-            echo "| 02 Security Headers | ✅ PASS | CSP, HSTS, X-Frame-Options |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 02 Security Headers | ❌ FAIL | CSP, HSTS, X-Frame-Options |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          if [ "${{ needs.test-fixture-03.result }}" == "success" ]; then
-            echo "| 03 Cache Conflict | ✅ PASS | Documents intentional misconfiguration |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 03 Cache Conflict | ❌ FAIL | Documents intentional misconfiguration |" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Fixtures Overview" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **01-cache-control**: Proper cache headers for Webpack (React) and Angular CLI builds" >> $GITHUB_STEP_SUMMARY
-          echo "- **02-security-headers**: Comprehensive security headers (CSP, HSTS, etc.)" >> $GITHUB_STEP_SUMMARY
-          echo "- **03-cache-conflict**: Demonstrates how global directives can corrupt location-specific headers" >> $GITHUB_STEP_SUMMARY
+          cat README.md | awk '/TEST-RESULTS-START/,/TEST-RESULTS-END/' >> $GITHUB_STEP_SUMMARY

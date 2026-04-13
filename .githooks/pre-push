@@ -1,122 +1,21 @@
 #!/bin/bash
-# Pre-push hook: Update README with test results before pushing
+# Pre-push hook: Quick validation before push
+# Note: Tests run in GitHub Actions, not locally
 
-set -e
-
-echo "🔍 Pre-push hook: Updating README with test results..."
+echo "🔍 Pre-push validation..."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Try to run tests
-run_tests() {
-    cd "$PROJECT_ROOT/test"
-    
-    # Check if bats is available on host
-    if command -v bats &> /dev/null; then
-        echo "🧪 Running tests with host BATS..."
-        bats --tap *.bats 2>&1
-        return 0
+# Check that fixture directories exist
+for fixture in 01-cache-control 02-security-headers 03-cache-conflict; do
+    if [ ! -d "$PROJECT_ROOT/fixtures/$fixture" ]; then
+        echo "❌ Missing fixture: $fixture"
+        exit 1
     fi
-    
-    # Fall back to containerized BATS
-    if command -v podman &> /dev/null; then
-        echo "🐳 Running tests in container..."
-        "$PROJECT_ROOT/scripts/run-bats-in-container.sh" --tap 2>&1
-        return 0
-    fi
-    
-    echo "⚠️  Neither BATS nor Podman found. Skipping tests."
-    return 1
-}
+done
 
-# Run tests and capture output
-TEST_OUTPUT=$(run_tests) || TEST_OUTPUT=""
-
-# Colors
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-NC='\033[0m'
-
-# Parse TAP output
-TOTAL_PASSED=0
-TOTAL_FAILED=0
-TOTAL_SKIPPED=0
-
-while IFS= read -r line; do
-    if [[ "$line" =~ ^ok[[:space:]][0-9]+ ]]; then
-        if [[ "$line" =~ \#\ skip ]]; then
-            TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
-        else
-            TOTAL_PASSED=$((TOTAL_PASSED + 1))
-        fi
-    elif [[ "$line" =~ ^not[[:space:]]ok[[:space:]][0-9]+ ]]; then
-        TOTAL_FAILED=$((TOTAL_FAILED + 1))
-    fi
-done <<< "$TEST_OUTPUT"
-
-echo ""
-echo "📊 Test Results: $TOTAL_PASSED passed, $TOTAL_FAILED failed, $TOTAL_SKIPPED skipped"
-
-# Generate fixture results
-generate_result() {
-    local num="$1" name="$2" desc="$3"
-    local passed=$(echo "$TEST_OUTPUT" | grep -c "^ok.*$num-" || true)
-    local failed=$(echo "$TEST_OUTPUT" | grep -c "^not ok.*$num-" || true)
-    local total=$((passed + failed))
-    local icon="✅"
-    [ $failed -gt 0 ] && icon="❌"
-    [ $total -eq 0 ] && icon="⏳"
-    echo "| $name | $icon $passed/$total | $desc |"
-}
-
-RESULTS=""
-RESULTS="${RESULTS}$(generate_result "01" "01 Cache Control" "React & Angular cache headers")\n"
-RESULTS="${RESULTS}$(generate_result "02" "02 Security Headers" "CSP, HSTS, X-Frame-Options")\n"
-RESULTS="${RESULTS}$(generate_result "03" "03 Cache Conflict" "Documents directive conflicts")"
-
-TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
-
-NEW_RESULTS="<!-- TEST-RESULTS-START -->
-## Test Results (Auto-generated)
-
-| Fixture | Status | Description |
-|---------|--------|-------------|
-$RESULTS
-
-**Summary:** $TOTAL_PASSED passed, $TOTAL_FAILED failed, $TOTAL_SKIPPED skipped
-
-*Last updated: $TIMESTAMP*
-<!-- TEST-RESULTS-END -->"
-
-# Update README
-echo "📝 Updating README.md..."
-if grep -q "<!-- TEST-RESULTS-START -->" "$PROJECT_ROOT/README.md"; then
-    awk -v r="$NEW_RESULTS" '/<!-- TEST-RESULTS-START -->/{print; print r; skip=1; next} /<!-- TEST-RESULTS-END -->/{skip=0; next} !skip{print}' "$PROJECT_ROOT/README.md" > "$PROJECT_ROOT/README.tmp"
-    mv "$PROJECT_ROOT/README.tmp" "$PROJECT_ROOT/README.md"
-else
-    awk -v r="$NEW_RESULTS" '/^# /&&!done{print; print ""; print r; done=1; next} {print}' "$PROJECT_ROOT/README.md" > "$PROJECT_ROOT/README.tmp"
-    mv "$PROJECT_ROOT/README.tmp" "$PROJECT_ROOT/README.md"
-fi
-
-# Commit changes
-git add "$PROJECT_ROOT/README.md"
-if ! git diff --cached --quiet; then
-    echo "✅ README updated"
-    if git rev-parse --abbrev-ref '@{upstream}' &>/dev/null 2>&1; then
-        LOCAL=$(git rev-parse @) 2>/dev/null
-        REMOTE=$(git rev-parse '@{upstream}') 2>/dev/null
-        if [ "$LOCAL" = "$REMOTE" ]; then
-            git commit -m "docs: update test results [ci skip]"
-        else
-            git commit --amend --no-edit
-        fi
-    else
-        git commit --amend --no-edit
-    fi
-fi
-
-echo ""
-[ $TOTAL_FAILED -gt 0 ] && echo -e "${RED}⚠️  Some tests failed!${NC}" || echo -e "${GREEN}✅ All tests passed!${NC}"
+echo "✅ All fixtures present"
+echo "📝 Tests will run in GitHub Actions and update README"
 echo ""
 exit 0
