@@ -1,9 +1,17 @@
 # Apache Configuration Test Fixtures
 
 <!-- TEST-RESULTS-START -->
-## Test Results (Pending)
+## Test Results (Auto-generated from local run)
 
-*Tests have not run yet*
+| Fixture | Status | Description |
+|---------|--------|-------------|
+| 01 Cache Control | ✅ 9/9 | React & Angular cache headers |
+| 02 Security Headers | ✅ 7/7 | CSP, HSTS, X-Frame-Options |
+| 03 Cache Conflict | ✅ 5/5 | Documents directive conflicts |
+
+**Summary:** 21 passed, 0 failed, 0 skipped
+
+*Last updated: 2026-04-13 18:45:57 UTC (local)*
 <!-- TEST-RESULTS-END -->
 
 
