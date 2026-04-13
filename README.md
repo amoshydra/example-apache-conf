@@ -1,5 +1,11 @@
 # Apache Configuration Test Fixtures
 
+<!-- TEST-RESULTS-START -->
+## Test Results (Pending)
+
+*Tests have not run yet*
+<!-- TEST-RESULTS-END -->
+
 This repository contains Apache HTTP Server configuration examples and a BATS-based testing framework for validating different scenarios.
 
 
