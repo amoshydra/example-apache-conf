@@ -1,10 +1,19 @@
 # Apache Configuration Test Fixtures
 
-<!-- TEST-RESULTS-START -->
-## Test Results (Pending)
 
-*Tests have not run yet*
+## Test Results (Auto-generated)
+
+| Fixture | Status | Description |
+|---------|--------|-------------|
+| 01 Cache Control | ✅ 9/9 | React & Angular cache headers |
+| 02 Security Headers | ✅ 7/7 | CSP, HSTS, X-Frame-Options |
+| 03 Cache Conflict | ✅ 5/5 | Documents directive conflicts |
+
+**Summary:** 21 passed, 0 failed, 0 skipped
+
+*Last updated: 2026-04-13 18:41:05 UTC*
 <!-- TEST-RESULTS-END -->
+
 
 This repository contains Apache HTTP Server configuration examples and a BATS-based testing framework for validating different scenarios.
 
