@@ -1,8 +1,7 @@
 #!/bin/bash
-# Pre-push hook: Quick validation before push
-# Note: Tests run in GitHub Actions, not locally
+# Pre-push hook: Run tests locally if BATS is available, update README
 
-echo "🔍 Pre-push validation..."
+echo "🔍 Pre-push hook starting..."
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -16,6 +15,102 @@ for fixture in 01-cache-control 02-security-headers 03-cache-conflict; do
 done
 
 echo "✅ All fixtures present"
-echo "📝 Tests will run in GitHub Actions and update README"
+
+# Check if we should run tests locally
+if command -v bats &> /dev/null && command -v podman &> /dev/null; then
+    echo "🧪 BATS and Podman found - running tests locally..."
+    
+    cd "$PROJECT_ROOT/test"
+    
+    # Run tests and capture output
+    TEST_OUTPUT=$(bats --tap *.bats 2>&1) || TEST_EXIT=$?
+    
+    # Parse TAP output
+    TOTAL_PASSED=0
+    TOTAL_FAILED=0
+    TOTAL_SKIPPED=0
+    
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^ok[[:space:]][0-9]+ ]]; then
+            if [[ "$line" =~ \#\ skip ]]; then
+                TOTAL_SKIPPED=$((TOTAL_SKIPPED + 1))
+            else
+                TOTAL_PASSED=$((TOTAL_PASSED + 1))
+            fi
+        elif [[ "$line" =~ ^not[[:space:]]ok[[:space:]][0-9]+ ]]; then
+            TOTAL_FAILED=$((TOTAL_FAILED + 1))
+        fi
+    done <<< "$TEST_OUTPUT"
+    
+    echo ""
+    echo "📊 Local Test Results: $TOTAL_PASSED passed, $TOTAL_FAILED failed, $TOTAL_SKIPPED skipped"
+    
+    # Generate fixture results
+    generate_result() {
+        local num="$1" name="$2" desc="$3"
+        local passed=$(echo "$TEST_OUTPUT" | grep -c "^ok.*$num-" || true)
+        local failed=$(echo "$TEST_OUTPUT" | grep -c "^not ok.*$num-" || true)
+        local total=$((passed + failed))
+        local icon="✅"
+        [ $failed -gt 0 ] && icon="⚠️"
+        [ $total -eq 0 ] && icon="⏳"
+        echo "| $name | $icon $passed/$total | $desc |"
+    }
+    
+    RESULTS=""
+    RESULTS="${RESULTS}$(generate_result "01" "01 Cache Control" "React & Angular cache headers")\n"
+    RESULTS="${RESULTS}$(generate_result "02" "02 Security Headers" "CSP, HSTS, X-Frame-Options")\n"
+    RESULTS="${RESULTS}$(generate_result "03" "03 Cache Conflict" "Documents directive conflicts")"
+    
+    TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+    
+    # Create new results section
+    NEW_RESULTS="<!-- TEST-RESULTS-START -->
+## Test Results (Auto-generated from local run)
+
+| Fixture | Status | Description |
+|---------|--------|-------------|
+$(echo -e "$RESULTS")
+
+**Summary:** $TOTAL_PASSED passed, $TOTAL_FAILED failed, $TOTAL_SKIPPED skipped
+
+*Last updated: $TIMESTAMP (local)*
+<!-- TEST-RESULTS-END -->"
+    
+    # Update README
+    echo "📝 Updating README.md with local results..."
+    if grep -q "<!-- TEST-RESULTS-START -->" "$PROJECT_ROOT/README.md"; then
+        awk -v r="$NEW_RESULTS" '/<!-- TEST-RESULTS-START -->/{print; print r; skip=1; next} /<!-- TEST-RESULTS-END -->/{skip=0; next} !skip{print}' "$PROJECT_ROOT/README.md" > "$PROJECT_ROOT/README.tmp"
+        mv "$PROJECT_ROOT/README.tmp" "$PROJECT_ROOT/README.md"
+    else
+        awk -v r="$NEW_RESULTS" '/^# /&&!done{print; print ""; print r; done=1; next} {print}' "$PROJECT_ROOT/README.md" > "$PROJECT_ROOT/README.tmp"
+        mv "$PROJECT_ROOT/README.tmp" "$PROJECT_ROOT/README.md"
+    fi
+    
+    # Stage README
+    git add "$PROJECT_ROOT/README.md"
+    if ! git diff --cached --quiet; then
+        # Amend the commit we're about to push
+        git commit --amend --no-edit
+        echo "✅ README updated with local test results"
+    fi
+    
+    # Warn if tests failed (but don't block)
+    if [ $TOTAL_FAILED -gt 0 ]; then
+        echo ""
+        echo "⚠️  WARNING: $TOTAL_FAILED test(s) failed!"
+        echo "   Push will continue, but review the failures above."
+        echo ""
+    else
+        echo ""
+        echo "✅ All tests passed!"
+        echo ""
+    fi
+else
+    echo "ℹ️  BATS or Podman not found - skipping local tests"
+    echo "   Tests will run in GitHub Actions instead"
+fi
+
+echo "🚀 Proceeding with push..."
 echo ""
 exit 0
