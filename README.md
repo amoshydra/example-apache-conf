@@ -2,17 +2,20 @@
 
 This repository contains Apache HTTP Server configuration examples and a BATS-based testing framework for validating different scenarios.
 
-<!-- TEST-RESULTS-START -->
+
 ## Test Results (Auto-generated)
 
 | Fixture | Status | Description |
 |---------|--------|-------------|
-| 01 Cache Control | ⏳ Pending | React & Angular cache headers |
-| 02 Security Headers | ⏳ Pending | CSP, HSTS, X-Frame-Options |
-| 03 Cache Conflict | ⏳ Pending | Documents directive conflicts |
+| 01 Cache Control | ❌ 0/9 | React & Angular cache headers |
+| 02 Security Headers | ❌ 4/7 | CSP, HSTS, X-Frame-Options |
+| 03 Cache Conflict | ❌ 0/5 | Documents directive conflicts |
 
-*Tests will run in GitHub Actions and update this section*
+**Summary:** 4 passed, 17 failed, 0 skipped
+
+*Last updated: 2026-04-13 18:06:36 UTC*
 <!-- TEST-RESULTS-END -->
+
 
 ## Fixtures
 
