@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSP Multi-Line Test</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'nonce-<!--#echo var='UNIQUE_ID' -->'; style-src 'self'">
+</head>
+<body>
+    <h1>Apache CSP Multi-Line Header Test</h1>
+    <p>UNIQUE_ID per request (via SSI): <code><!--#echo var='UNIQUE_ID' --></code></p>
+    <pre id="csp-display"></pre>
+    <script>
+        var meta = document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+        document.getElementById('csp-display').textContent =
+            'CSP from meta tag:\n' + meta.content;
+    </script>
+</body>
+</html>
